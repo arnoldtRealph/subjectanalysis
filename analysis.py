@@ -10,99 +10,93 @@ import re
 
 # ====================== STREAMLIT CONFIG ======================
 st.set_page_config(
-    page_title="SAUL DAMON | TERM ANALYSIS",
+    page_title="Saul Damon High School | Term Analysis",
     layout="wide",
-    page_icon="⚡",
+    page_icon="📊",
     initial_sidebar_state="expanded"
 )
 
-# ====================== CYBER-TECH STYLING ======================
+# ====================== PROFESSIONAL TECH STYLING ======================
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Roboto+Mono:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
         .stApp {
-            background: linear-gradient(135deg, #0a0e17 0%, #1a2338 100%);
-            color: #00f5ff;
-            font-family: 'Roboto Mono', monospace;
+            background: linear-gradient(135deg, #0A2540 0%, #112B4F 100%);
+            color: #E0F2FF;
+            font-family: 'Inter', sans-serif;
         }
         
         .main-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 52px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 48px;
             font-weight: 700;
-            background: linear-gradient(90deg, #00f5ff, #ff00ff, #00ff9d);
+            background: linear-gradient(90deg, #00D4C8, #4FC3F7);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
-            text-shadow: 0 0 30px rgba(0, 245, 255, 0.5);
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
         
         .sub-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 28px;
-            color: #00ff9d;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 26px;
+            color: #81E6D9;
             text-align: center;
             margin-bottom: 40px;
-            letter-spacing: 3px;
+            letter-spacing: 1.5px;
         }
         
         .section-header {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 26px;
-            color: #00f5ff;
-            border-left: 5px solid #ff00ff;
-            padding-left: 15px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            color: #00D4C8;
+            border-bottom: 2px solid #00D4C8;
+            padding-bottom: 10px;
             margin: 35px 0 20px 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 245, 255, 0.2);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        }
-        
-        .stButton>button {
-            background: linear-gradient(45deg, #00f5ff, #ff00ff);
-            color: #0a0e17;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 28px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
             letter-spacing: 1px;
         }
         
+        .glass-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 212, 200, 0.25);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        
+        .stButton>button {
+            background: linear-gradient(45deg, #00D4C8, #4FC3F7);
+            color: #0A2540;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 32px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
         .stButton>button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 0 25px rgba(0, 245, 255, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 212, 200, 0.4);
         }
         
         .metric-card {
-            background: rgba(0, 245, 255, 0.08);
-            border: 1px solid #00f5ff;
-            border-radius: 12px;
-            padding: 15px;
+            background: rgba(0, 212, 200, 0.08);
+            border: 1px solid #00D4C8;
+            border-radius: 14px;
+            padding: 18px;
             text-align: center;
         }
         
         h1, h2, h3 {
-            font-family: 'Orbitron', sans-serif;
-            color: #00ff9d;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #81E6D9;
         }
         
         .stDataFrame {
             border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(0, 245, 255, 0.15);
+            border: 1px solid rgba(0, 212, 200, 0.2);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -110,31 +104,23 @@ st.markdown("""
 # ====================== SIDEBAR ======================
 with st.sidebar:
     st.markdown("""
-        <div style='text-align:center; margin-bottom:20px;'>
-            <h2 style='color:#00f5ff; font-family:Orbitron;'>⚡ SYSTEM CONTROL</h2>
+        <div style='text-align:center; margin-bottom:25px;'>
+            <h2 style='color:#00D4C8; font-family:Space Grotesk;'>TERM PERFORMANCE DASHBOARD</h2>
         </div>
     """, unsafe_allow_html=True)
     
-    uploaded_file = st.file_uploader("UPLOAD TERM TEMPLATE.XLSX", type=["xlsx"])
+    uploaded_file = st.file_uploader("Upload TERM TEMPLATE Excel File", type=["xlsx"])
     
-    term = st.selectbox("SELECT TERM", ["Term 1", "Term 2", "Term 3", "Term 4"], index=0)
+    term = st.selectbox("Select Term", ["Term 1", "Term 2", "Term 3", "Term 4"], index=0)
     
-    chart_type = st.selectbox("CHART PROTOCOL", ["Bar", "Stacked Bar", "Pie"], index=0)
-    
-    st.markdown("---")
-    st.caption("SAUL DAMON HIGH SCHOOL | PERFORMANCE MATRIX v2.4")
+    chart_type = st.selectbox("Chart Type", ["Bar", "Stacked Bar", "Pie"], index=0)
 
 # ====================== MAIN HEADER ======================
 st.markdown('<p class="main-title">SAUL DAMON HIGH SCHOOL</p>', unsafe_allow_html=True)
-st.markdown(f'<p class="sub-title">TERM {term.split()[1]} PERFORMANCE MATRIX</p>', unsafe_allow_html=True)
+st.markdown(f'<p class="sub-title">{term} • Performance Analysis</p>', unsafe_allow_html=True)
 
 if not uploaded_file:
-    st.markdown("""
-        <div style='text-align:center; padding:60px;'>
-            <h2 style='color:#ff00ff;'>UPLOAD DATA PACKET TO INITIALIZE ANALYSIS</h2>
-            <p style='color:#00ff9d; font-size:18px;'>Upload your TERM TEMPLATE.xlsx to begin neural analysis</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.info("👈 Upload your TERM TEMPLATE.xlsx file from the sidebar to generate the analysis.")
     st.stop()
 
 # ====================== DATA PROCESSING ======================
@@ -159,11 +145,12 @@ def process_data(file):
         grade_df = grade_df.iloc[:, :len(cols)]
         grade_df.columns = cols
         
-        # Clean data
+        # Clean SUBJECT
         grade_df["SUBJECT"] = grade_df["SUBJECT"].astype(str).str.strip()
         grade_df["SUBJECT"] = grade_df["SUBJECT"].apply(lambda x: re.sub(r'[^\x20-\x7E]', '', x))
         grade_df = grade_df[grade_df["SUBJECT"].notna() & (grade_df["SUBJECT"] != "nan") & (grade_df["SUBJECT"] != "")]
         
+        # Convert numbers
         numeric_cols = ["AVERAGE MARK", "TOTAL"] + [f"LEVEL {i}" for i in range(1, 8)]
         grade_df[numeric_cols] = grade_df[numeric_cols].apply(pd.to_numeric, errors="coerce")
         grade_df[[f"LEVEL {i}" for i in range(1, 8)]] = grade_df[[f"LEVEL {i}" for i in range(1, 8)]].fillna(0)
@@ -174,66 +161,62 @@ def process_data(file):
 
 grade_dfs = process_data(uploaded_file)
 
-# ====================== DASHBOARD ======================
+# ====================== DASHBOARD CONTENT ======================
 for grade, gdf in grade_dfs.items():
     if gdf.empty:
         continue
         
-    st.markdown(f'<p class="section-header">◉ {grade.upper()} NEURAL ANALYSIS</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="section-header">{grade} Analysis</p>', unsafe_allow_html=True)
     
-    # Metrics Row
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    # Metrics
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("SUBJECTS ONLINE", len(gdf))
+        st.metric("Subjects", len(gdf))
         st.markdown('</div>', unsafe_allow_html=True)
-    with col2:
+    with col_m2:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
         avg_mark = gdf["AVERAGE MARK"].mean()
-        st.metric("SYSTEM AVERAGE", f"{avg_mark:.1f}%")
+        st.metric("Average Mark", f"{avg_mark:.1f}%")
         st.markdown('</div>', unsafe_allow_html=True)
-    with col3:
+    with col_m3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        total_students = gdf["TOTAL"].sum()
-        st.metric("TOTAL LEARNERS", f"{int(total_students):,}")
+        total_learners = gdf["TOTAL"].sum()
+        st.metric("Total Learners", f"{int(total_learners):,}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Table + Chart
-    c1, c2 = st.columns([1, 1.6])
-    
+    # Table and Main Chart
+    c1, c2 = st.columns([1, 1.7])
     with c1:
-        st.markdown("**SUBJECT PERFORMANCE GRID**")
-        styled_df = gdf[["SUBJECT", "AVERAGE MARK", "TOTAL"]].style\
+        st.subheader("Subject Performance")
+        styled = gdf[["SUBJECT", "AVERAGE MARK", "TOTAL"]].style\
             .format({"AVERAGE MARK": "{:.1f}%", "TOTAL": "{:,.0f}"})\
-            .background_gradient(cmap="plasma", subset=["AVERAGE MARK"])\
-            .set_properties(**{'color': '#00ff9d'})
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+            .background_gradient(cmap="Blues", subset=["AVERAGE MARK"])
+        st.dataframe(styled, use_container_width=True, hide_index=True)
     
     with c2:
-        st.markdown("**AVERAGE MARKS PROTOCOL**")
+        st.subheader("Average Marks Visualization")
         fig, ax = plt.subplots(figsize=(12, 6.5))
         
         if chart_type == "Bar":
-            sns.barplot(x="SUBJECT", y="AVERAGE MARK", data=gdf, palette="viridis", ax=ax, edgecolor="#00f5ff")
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", color="#00ff9d")
+            sns.barplot(x="SUBJECT", y="AVERAGE MARK", data=gdf, palette="Blues_d", ax=ax)
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
         elif chart_type == "Stacked Bar":
             level_cols = [f"LEVEL {i}" for i in range(1, 8)]
-            gdf.set_index("SUBJECT")[level_cols].plot(kind="bar", stacked=True, ax=ax, colormap="plasma")
-            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", color="#00ff9d")
+            gdf.set_index("SUBJECT")[level_cols].plot(kind="bar", stacked=True, ax=ax, colormap="Blues")
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
         else:  # Pie
             fig, ax = plt.subplots(figsize=(10, 8))
             ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', 
-                   startangle=90, colors=plt.cm.plasma(range(len(gdf))))
+                   startangle=90, colors=sns.color_palette("Blues_d", len(gdf)))
             ax.axis('equal')
         
-        ax.set_title(f"{grade} PERFORMANCE DISTRIBUTION", color="#00f5ff", fontsize=14, pad=20)
-        ax.set_facecolor('#0a0e17')
-        fig.patch.set_facecolor('#0a0e17')
+        ax.set_title(f"{grade} - Average Marks", fontsize=14, color="#00D4C8", pad=20)
         plt.tight_layout()
         st.pyplot(fig)
 
     # Level Distribution
-    st.markdown('<p class="section-header">LEVEL DISTRIBUTION MATRIX</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Level Distribution per Subject</p>', unsafe_allow_html=True)
     level_cols = [f"LEVEL {i}" for i in range(1, 8)]
     pie_cols = st.columns(3)
     
@@ -242,25 +225,24 @@ for grade, gdf in grade_dfs.items():
         levels = row[level_cols]
         
         with pie_cols[idx % 3]:
-            fig, ax = plt.subplots(figsize=(5.5, 5.5))
-            wedges, _ = ax.pie(levels, startangle=90, 
-                             colors=plt.cm.plasma(range(7)))
+            fig, ax = plt.subplots(figsize=(5.2, 5.2))
+            wedges, _ = ax.pie(levels, startangle=90, colors=sns.color_palette("Blues", 7))
             
-            legend_labels = [f"L{i} ({int(levels.iloc[i-1])})" 
+            legend_labels = [f"Level {i} ({int(levels.iloc[i-1])})" 
                            for i in range(1, 8) if levels.iloc[i-1] > 0]
             
-            ax.legend(wedges, legend_labels, title="LEVELS", 
-                     loc="center left", bbox_to_anchor=(1.1, 0.5), fontsize=9, labelcolor="#00ff9d")
+            ax.legend(wedges, legend_labels, title="Levels", 
+                     loc="center left", bbox_to_anchor=(1.05, 0.5), fontsize=9)
             
-            ax.set_title(subject, color="#ff00ff", fontsize=12)
-            ax.set_facecolor('#0a0e17')
+            ax.set_title(subject, fontsize=11, color="#81E6D9")
+            ax.axis('equal')
             st.pyplot(fig)
 
-    # Pass/Fail Analysis
-    st.markdown('<p class="section-header">PASS/FAIL STATUS</p>', unsafe_allow_html=True)
+    # Pass/Fail
+    st.markdown('<p class="section-header">Pass / Fail Distribution</p>', unsafe_allow_html=True)
     
-    # Pass/Fail logic (same as before but cleaner)
-    pass_counts, fail_counts = [], []
+    pass_counts = []
+    fail_counts = []
     for _, row in gdf.iterrows():
         total = row["TOTAL"]
         if pd.isna(total) or total <= 0:
@@ -268,10 +250,11 @@ for grade, gdf in grade_dfs.items():
             fail_counts.append(0)
             continue
             
-        if "Afrikaans" in row["SUBJECT"] or (row["SUBJECT"] == "Mathematics (Gr 09)" and grade == "Grade 9"):
+        if "Afrikaans HL" in row["SUBJECT"] or "Afrikaans FAL" in row["SUBJECT"] or \
+           (row["SUBJECT"] == "Mathematics (Gr 09)" and grade == "Grade 9"):
             fail_count = row[["LEVEL 1", "LEVEL 2"]].sum()
         else:
-            fail_count = row["LEVEL 1"]
+            fail_count = row.get("LEVEL 1", 0)
             
         pass_count = total - fail_count
         pass_counts.append(max(0, pass_count))
@@ -283,51 +266,45 @@ for grade, gdf in grade_dfs.items():
     
     fig, ax = plt.subplots(figsize=(13, 6.5))
     pass_fail_df.set_index("SUBJECT")[["FAILED", "PASSED"]].plot(
-        kind="bar", stacked=True, ax=ax, color=["#ff0066", "#00ff9d"]
+        kind="bar", stacked=True, ax=ax, color=["#FF6B6B", "#4ECDC4"]
     )
-    ax.set_facecolor('#0a0e17')
-    fig.patch.set_facecolor('#0a0e17')
-    ax.set_title(f"{grade} PASS/FAIL MATRIX", color="#00f5ff", pad=20)
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", color="#00ff9d")
+    ax.set_title(f"{grade} - Pass/Fail Distribution", fontsize=14, color="#00D4C8", pad=20)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
     plt.tight_layout()
     st.pyplot(fig)
 
     # Insights
-    st.markdown('<p class="section-header">AI-GENERATED INSIGHTS</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Insights & Recommendations</p>', unsafe_allow_html=True)
     for _, row in gdf.iterrows():
         subject = row["SUBJECT"]
         avg = row["AVERAGE MARK"]
         total = row["TOTAL"]
         failed = pass_fail_df[pass_fail_df["SUBJECT"] == subject]["FAILED"].values[0]
         fail_rate = (failed / total * 100) if total > 0 else 0
+        pass_rate = 100 - fail_rate
         
-        status = "CRITICAL" if fail_rate > 30 else "WARNING" if avg < 50 else "OPTIMAL"
-        color = "#ff0066" if status == "CRITICAL" else "#ffaa00" if status == "WARNING" else "#00ff9d"
+        if fail_rate > 30:
+            insight = f"High fail rate detected. Consider targeted intervention."
+            emoji = "🔴"
+        elif avg < 50:
+            insight = f"Below target average. Review teaching methods and resources."
+            emoji = "🟠"
+        else:
+            insight = f"Strong performance. Continue current strategies."
+            emoji = "🟢"
         
         st.markdown(f"""
-            <div style='padding:15px; border-left:4px solid {color}; margin:8px 0; background:rgba(255,255,255,0.03); border-radius:8px;'>
-                <b style='color:{color};'>{status}</b> | <b>{subject}</b> — Avg: <b>{avg:.1f}%</b> | Fail Rate: <b>{fail_rate:.1f}%</b><br>
-                { "⚠️ Immediate intervention required." if status == "CRITICAL" else 
-                  "📉 Review teaching protocol." if status == "WARNING" else 
-                  "✅ System performing within optimal parameters." }
-            </div>
-        """, unsafe_allow_html=True)
+            **{subject}** — Avg: **{avg:.1f}%** | Pass Rate: **{pass_rate:.1f}%**  
+            {emoji} {insight}
+        """)
 
 # ====================== DOWNLOAD SECTION ======================
 st.markdown("---")
-col_a, col_b = st.columns([1, 2])
-with col_a:
-    st.markdown('<p class="section-header">EXPORT REPORT</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-header">Generate Full Report</p>', unsafe_allow_html=True)
 
-if st.button("⚡ GENERATE FULL REPORT", type="primary"):
-    with st.spinner("Compiling neural report..."):
-        # (Word generation function can be added similarly with cyber styling - let me know if you want it expanded)
-        st.success("✅ REPORT GENERATED | DOWNLOAD READY")
-        st.download_button(
-            label="⬇️ DOWNLOAD .DOCX",
-            data=b"Report content here",  # Replace with actual generation
-            file_name=f"SAUL_DAMON_{term.replace(' ', '_')}_MATRIX.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+if st.button("Generate Professional Word Report", type="primary"):
+    with st.spinner("Generating report..."):
+        st.success("Report ready! (Word generation logic can be expanded here)")
+        # Add your full generate_word_report() function here if needed
 
-st.caption("🔬 SAUL DAMON HIGH SCHOOL | PERFORMANCE INTELLIGENCE SYSTEM | v2.4")
+st.caption("Saul Damon High School • Professional Term Performance Dashboard")
