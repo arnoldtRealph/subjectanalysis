@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import re
 from docx import Document
+from docx.shared import Inches
 from io import BytesIO
 
 # ====================== CONFIG ======================
@@ -15,32 +16,12 @@ st.set_page_config(
 
 # ====================== LIGHT STYLING ======================
 st.markdown("""
-    <style>
-        .stApp {
-            background-color: #F5F7FA;
-            color: #1F2937;
-            font-family: Arial, sans-serif;
-        }
-        .main-title {
-            font-size: 42px;
-            font-weight: 700;
-            text-align: center;
-        }
-        .sub-title {
-            font-size: 22px;
-            text-align: center;
-            margin-bottom: 30px;
-            color: #4B5563;
-        }
-        .section-header {
-            font-size: 22px;
-            font-weight: 600;
-            color: #2563EB;
-            border-bottom: 2px solid #2563EB;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-    </style>
+<style>
+.stApp {background-color:#F5F7FA; color:#1F2937; font-family:Arial;}
+.main-title {font-size:42px; text-align:center; font-weight:bold;}
+.sub-title {font-size:22px; text-align:center; margin-bottom:30px; color:#4B5563;}
+.section-header {font-size:22px; font-weight:600; color:#2563EB; margin-top:30px;}
+</style>
 """, unsafe_allow_html=True)
 
 # ====================== SIDEBAR ======================
@@ -96,7 +77,30 @@ def process_data(file):
 
 grade_dfs = process_data(uploaded_file)
 
-# ====================== REPORT FUNCTION ======================
+# ====================== PIE FIX ======================
+def autopct_format(pct):
+    return f"{pct:.1f}%" if pct > 6 else ""
+
+# ====================== CHART IMAGE ======================
+def create_pie_chart(gdf, title):
+    fig, ax = plt.subplots(figsize=(6,6))
+    ax.pie(
+        gdf["AVERAGE MARK"],
+        labels=gdf["SUBJECT"],
+        autopct=autopct_format,
+        startangle=90,
+        colors=sns.color_palette("pastel")
+    )
+    ax.set_title(title)
+    ax.axis('equal')
+
+    img = BytesIO()
+    plt.savefig(img, format='png', bbox_inches='tight')
+    plt.close(fig)
+    img.seek(0)
+    return img
+
+# ====================== REPORT ======================
 def generate_report(grade_dfs, term):
     doc = Document()
     doc.add_heading(f"Saul Damon High School\n{term} Report", 0)
@@ -109,6 +113,9 @@ def generate_report(grade_dfs, term):
 
         doc.add_paragraph(f"Average Mark: {gdf['AVERAGE MARK'].mean():.1f}%")
         doc.add_paragraph(f"Total Learners: {int(gdf['TOTAL'].sum())}")
+
+        chart_img = create_pie_chart(gdf, f"{grade} Average Marks")
+        doc.add_picture(chart_img, width=Inches(5.5))
 
         table = doc.add_table(rows=1, cols=3)
         headers = table.rows[0].cells
@@ -127,19 +134,15 @@ def generate_report(grade_dfs, term):
     buffer.seek(0)
     return buffer
 
-# ====================== DOWNLOAD ALL ======================
+# ====================== DOWNLOAD FULL ======================
 full_report = generate_report(grade_dfs, term)
 
 st.download_button(
-    "📄 Download Full School Report",
+    "📄 Download Full School Report (With Charts)",
     data=full_report,
     file_name=f"{term}_Full_Report.docx",
     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
-
-# ====================== PIE LABEL FIX ======================
-def autopct_format(pct):
-    return f"{pct:.1f}%" if pct > 6 else ""
 
 # ====================== DASHBOARD ======================
 for grade, gdf in grade_dfs.items():
@@ -151,7 +154,7 @@ for grade, gdf in grade_dfs.items():
     # Grade download
     grade_report = generate_report({grade: gdf}, term)
     st.download_button(
-        f"Download {grade} Report",
+        f"Download {grade} Report (With Charts)",
         data=grade_report,
         file_name=f"{grade}_{term}.docx"
     )
@@ -165,45 +168,29 @@ for grade, gdf in grade_dfs.items():
     # Table
     st.dataframe(gdf[["SUBJECT", "AVERAGE MARK", "TOTAL"]], use_container_width=True)
 
-    # ====================== CHART ======================
+    # ====================== MAIN CHART ======================
     st.subheader("Average Marks")
 
-    if chart_type == "Pie":
-        fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(7,7))
 
+    if chart_type == "Pie":
         ax.pie(
             gdf["AVERAGE MARK"],
             labels=gdf["SUBJECT"],
             autopct=autopct_format,
             startangle=90,
-            pctdistance=0.75,
-            labeldistance=1.1,
             colors=sns.color_palette("pastel")
         )
         ax.axis('equal')
-        st.pyplot(fig)
+
+    elif chart_type == "Bar":
+        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf, color="#3B82F6", ax=ax)
 
     else:
-        fig, ax = plt.subplots(figsize=(12, 6))
+        level_cols = [f"LEVEL {i}" for i in range(1, 8)]
+        gdf.set_index("SUBJECT")[level_cols].plot(kind="barh", stacked=True, ax=ax, colormap="Blues")
 
-        if chart_type == "Bar":
-            sns.barplot(
-                x="AVERAGE MARK",
-                y="SUBJECT",
-                data=gdf,
-                color="#3B82F6",
-                ax=ax
-            )
-        else:
-            level_cols = [f"LEVEL {i}" for i in range(1, 8)]
-            gdf.set_index("SUBJECT")[level_cols].plot(
-                kind="barh",
-                stacked=True,
-                colormap="Blues",
-                ax=ax
-            )
-
-        st.pyplot(fig)
+    st.pyplot(fig)
 
     # ====================== LEVEL DISTRIBUTION ======================
     st.markdown('<p class="section-header">Level Distribution</p>', unsafe_allow_html=True)
@@ -219,18 +206,26 @@ for grade, gdf in grade_dfs.items():
                 st.write("No data")
                 continue
 
-            fig, ax = plt.subplots(figsize=(4, 4))
-
+            fig, ax = plt.subplots(figsize=(4,4))
             ax.pie(
                 levels,
                 autopct=autopct_format,
                 startangle=90,
                 colors=sns.color_palette("Blues")
             )
-
             ax.set_title(row["SUBJECT"], fontsize=10)
             ax.axis('equal')
             st.pyplot(fig)
+
+    # ====================== PASS / FAIL ======================
+    st.markdown('<p class="section-header">Pass / Fail</p>', unsafe_allow_html=True)
+
+    gdf["FAILED"] = gdf["LEVEL 1"]
+    gdf["PASSED"] = gdf["TOTAL"] - gdf["FAILED"]
+
+    fig, ax = plt.subplots(figsize=(10,5))
+    gdf.set_index("SUBJECT")[["FAILED","PASSED"]].plot(kind="barh", stacked=True, ax=ax)
+    st.pyplot(fig)
 
     # ====================== INSIGHTS ======================
     st.markdown('<p class="section-header">Insights</p>', unsafe_allow_html=True)
@@ -239,7 +234,7 @@ for grade, gdf in grade_dfs.items():
         if row["TOTAL"] == 0:
             continue
 
-        fail_rate = (row["LEVEL 1"] / row["TOTAL"]) * 100
+        fail_rate = (row["FAILED"] / row["TOTAL"]) * 100
 
         if fail_rate > 30:
             st.error(f"{row['SUBJECT']}: High fail rate ({fail_rate:.1f}%)")
