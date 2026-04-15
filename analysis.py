@@ -132,7 +132,6 @@ def process_data(file):
         numeric_cols = ["AVERAGE MARK"] + [f"LEVEL {i}" for i in range(1, 8)] + ["TOTAL"]
         grade_df[numeric_cols] = grade_df[numeric_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
         
-        # Reliable total from levels
         level_cols = [f"LEVEL {i}" for i in range(1, 8)]
         grade_df["TOTAL"] = grade_df[level_cols].sum(axis=1)
         
@@ -165,36 +164,67 @@ for grade, gdf in grade_dfs.items():
         st.metric("Total Learners", f"{int(gdf['TOTAL'].sum()):,}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Subject Performance Table - Full Width
+    # Table
     st.subheader("Subject Performance Table")
     styled = gdf[["SUBJECT", "AVERAGE MARK", "TOTAL"]].style\
         .format({"AVERAGE MARK": "{:.1f}%", "TOTAL": "{:,.0f}"})\
         .background_gradient(cmap="Blues", subset=["AVERAGE MARK"])
     st.dataframe(styled, use_container_width=True, hide_index=True)
 
-    # Average Marks Visualization - Full Width
+    # ====================== CHART ======================
     st.subheader("Average Marks Visualization")
-    fig, ax = plt.subplots(figsize=(14, 7.5))
     
-    if chart_type == "Bar":
-        sns.barplot(x="SUBJECT", y="AVERAGE MARK", data=gdf, palette="Blues_d", ax=ax)
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=11)
-    elif chart_type == "Stacked Bar":
-        level_cols = [f"LEVEL {i}" for i in range(1, 8)]
-        gdf.set_index("SUBJECT")[level_cols].plot(kind="bar", stacked=True, ax=ax, colormap="Blues")
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=11)
-    else:  # Pie
-        fig, ax = plt.subplots(figsize=(12, 9))
-        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', 
-               startangle=90, colors=sns.color_palette("Blues_d", len(gdf)))
-        ax.axis('equal')
-    
-    ax.set_title(f"{grade} — Average Marks per Subject", fontsize=15, pad=20)
-    plt.tight_layout()
-    st.pyplot(fig)
+    if chart_type == "Pie":
+        fig, ax = plt.subplots(figsize=(11, 8))
+        fig.patch.set_alpha(0)
+        ax.set_facecolor("#16243A")
 
-    # Level Distribution
+        colors = sns.color_palette("blend:#4ECDC4,#1A2A44", len(gdf))
+
+        wedges, texts, autotexts = ax.pie(
+            gdf["AVERAGE MARK"],
+            labels=gdf["SUBJECT"],
+            autopct='%1.1f%%',
+            startangle=90,
+            pctdistance=0.8,
+            colors=colors,
+            wedgeprops=dict(width=0.4, edgecolor='white')
+        )
+
+        for text in texts:
+            text.set_fontsize(10)
+
+        for autotext in autotexts:
+            autotext.set_color("white")
+            autotext.set_fontsize(10)
+            autotext.set_weight("bold")
+
+        ax.text(0, 0, f"{grade}\nAvg Marks", ha='center', va='center',
+                fontsize=14, weight='bold', color="#E8F1F8")
+
+        ax.axis('equal')
+        ax.set_title(f"{grade} — Average Marks per Subject", fontsize=15, pad=20)
+        st.pyplot(fig)
+
+    else:
+        fig, ax = plt.subplots(figsize=(14, 7.5))
+        fig.patch.set_alpha(0)
+        ax.set_facecolor("#16243A")
+
+        if chart_type == "Bar":
+            sns.barplot(x="SUBJECT", y="AVERAGE MARK", data=gdf, palette="Blues_d", ax=ax)
+        else:
+            level_cols = [f"LEVEL {i}" for i in range(1, 8)]
+            gdf.set_index("SUBJECT")[level_cols].plot(kind="bar", stacked=True, ax=ax, colormap="Blues")
+
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+        ax.set_title(f"{grade} — Average Marks per Subject", fontsize=15, pad=20)
+        plt.tight_layout()
+        st.pyplot(fig)
+
+    # ====================== LEVEL DONUTS ======================
     st.markdown('<p class="section-header">Level Distribution per Subject</p>', unsafe_allow_html=True)
+    
     level_cols = [f"LEVEL {i}" for i in range(1, 8)]
     pie_cols = st.columns(3)
     
@@ -208,19 +238,35 @@ for grade, gdf in grade_dfs.items():
                 st.info(f"**{subject}**\n\nNo level data")
                 continue
                 
-            fig, ax = plt.subplots(figsize=(5.8, 5.8))
-            wedges, _ = ax.pie(levels, startangle=90, colors=sns.color_palette("Blues", 7))
-            
-            legend_labels = [f"Level {i} ({int(levels.iloc[i-1])})" 
-                           for i in range(1, 8) if levels.iloc[i-1] > 0]
-            
-            ax.legend(wedges, legend_labels, title="Levels", 
-                     loc="center left", bbox_to_anchor=(1.05, 0.5), fontsize=10)
-            ax.set_title(subject, fontsize=12)
+            fig, ax = plt.subplots(figsize=(6, 6))
+            fig.patch.set_alpha(0)
+            ax.set_facecolor("#16243A")
+
+            colors = sns.color_palette("coolwarm", 7)
+
+            wedges, texts, autotexts = ax.pie(
+                levels,
+                autopct=lambda pct: f"{pct:.0f}%" if pct > 5 else "",
+                startangle=90,
+                pctdistance=0.75,
+                colors=colors,
+                wedgeprops=dict(width=0.45, edgecolor='white')
+            )
+
+            for autotext in autotexts:
+                autotext.set_color("white")
+                autotext.set_fontsize(9)
+                autotext.set_weight("bold")
+
+            ax.text(0, 0, f"{int(total_levels)}\nLearners",
+                    ha='center', va='center',
+                    fontsize=11, weight='bold', color="#E8F1F8")
+
+            ax.set_title(subject, fontsize=12, pad=12)
             ax.axis('equal')
             st.pyplot(fig)
 
-    # Pass/Fail
+    # ====================== PASS FAIL ======================
     st.markdown('<p class="section-header">Pass / Fail Distribution</p>', unsafe_allow_html=True)
     
     pass_counts, fail_counts = [], []
@@ -254,14 +300,16 @@ for grade, gdf in grade_dfs.items():
     plt.tight_layout()
     st.pyplot(fig)
 
-    # Insights
+    # ====================== INSIGHTS ======================
     st.markdown('<p class="section-header">Insights & Recommendations</p>', unsafe_allow_html=True)
+    
     for _, row in gdf.iterrows():
         subject = row["SUBJECT"]
         avg = row["AVERAGE MARK"]
         total = row["TOTAL"]
         if total == 0:
             continue
+            
         failed = pass_fail_df[pass_fail_df["SUBJECT"] == subject]["FAILED"].values[0]
         fail_rate = (failed / total * 100)
         
