@@ -13,26 +13,27 @@ st.set_page_config(page_title="Saul Damon High School | Term Analysis", layout="
 
 st.markdown("""
 <style>
-    .stApp {background-color:#F5F7FA; color:#1F2937;}
-    .main-title {font-size:42px; text-align:center; font-weight:bold; color:#1E3A8A;}
-    .sub-title {font-size:24px; text-align:center; margin-bottom:30px; color:#4B5563;}
-    .section-header {font-size:24px; font-weight:700; color:#1E40AF; margin:25px 0 10px 0;}
+    .stApp {background-color:#F8FAFC; color:#1F2937;}
+    .main-title {font-size:48px; text-align:center; font-weight:bold; color:#1E3A8A; margin-bottom:10px;}
+    .sub-title {font-size:26px; text-align:center; margin-bottom:40px; color:#334155;}
+    .section-header {font-size:28px; font-weight:700; color:#1E40AF; margin:35px 0 15px 0;}
+    .block-container {padding-top: 2rem;}
 </style>
 """, unsafe_allow_html=True)
 
 # ====================== SIDEBAR ======================
 with st.sidebar:
-    st.header("Settings")
+    st.header("⚙️ Settings")
     uploaded_file = st.file_uploader("Upload TERM TEMPLATE (Excel)", type=["xlsx"])
     term = st.selectbox("Select Term", ["Term 1", "Term 2", "Term 3", "Term 4"])
     chart_type = st.selectbox("Main Chart Type", ["Bar", "Stacked Bar", "Pie"])
 
 # ====================== HEADER ======================
 st.markdown('<p class="main-title">SAUL DAMON HIGH SCHOOL</p>', unsafe_allow_html=True)
-st.markdown(f'<p class="sub-title">{term} Performance Analysis</p>', unsafe_allow_html=True)
+st.markdown(f'<p class="sub-title">{term} Performance Analysis Dashboard</p>', unsafe_allow_html=True)
 
 if not uploaded_file:
-    st.info("Upload your Excel file to begin.")
+    st.info("👆 Upload your Excel TERM TEMPLATE to begin")
     st.stop()
 
 # ====================== DATA PROCESSING ======================
@@ -44,15 +45,13 @@ def process_data(file):
     grade_dfs = {}
 
     for i, grade in enumerate(grades):
-        if i >= len(grade_starts):
-            break
+        if i >= len(grade_starts): break
         start_idx = grade_starts[i] + 2
         end_idx = grade_starts[i + 1] if i + 1 < len(grade_starts) else len(df_raw)
         
         gdf = df_raw.iloc[start_idx:end_idx].copy().reset_index(drop=True)
         gdf = gdf.dropna(how="all").reset_index(drop=True)
-        if gdf.empty:
-            continue
+        if gdf.empty: continue
 
         cols = ["SUBJECT", "AVERAGE MARK", "LEVEL 1", "LEVEL 2", "LEVEL 3", "LEVEL 4", 
                 "LEVEL 5", "LEVEL 6", "LEVEL 7", "TOTAL"]
@@ -78,33 +77,29 @@ grade_dfs = process_data(uploaded_file)
 # ====================== HELPERS ======================
 def save_fig_to_bytes(fig):
     img = BytesIO()
-    fig.savefig(img, format='png', dpi=200, bbox_inches='tight')
+    fig.savefig(img, format='png', dpi=220, bbox_inches='tight', facecolor='white')
     plt.close(fig)
     img.seek(0)
     return img
 
-# ====================== PROFESSIONAL WORD REPORT ======================
+# ====================== WORD REPORT ======================
 def generate_professional_report(grade_dfs, term):
     doc = Document()
     doc.add_heading(f"Saul Damon High School\n{term} Performance Report", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     doc.add_heading("Executive Summary", level=1)
-    total_learners = sum(int(gdf["TOTAL"].sum()) for gdf in grade_dfs.values() if not gdf.empty)
-    doc.add_paragraph(f"Total Learners: {total_learners}")
+    total = sum(int(gdf["TOTAL"].sum()) for gdf in grade_dfs.values() if not gdf.empty)
+    doc.add_paragraph(f"Total Learners: {total}")
 
     for grade, gdf in grade_dfs.items():
         if gdf.empty: continue
         doc.add_page_break()
         doc.add_heading(grade, level=1)
-        
-        avg = gdf["AVERAGE MARK"].mean()
-        doc.add_paragraph(f"Average Mark: {avg:.1f}% | Total Learners: {int(gdf['TOTAL'].sum())}")
+        doc.add_paragraph(f"Average Mark: {gdf['AVERAGE MARK'].mean():.1f}% | Learners: {int(gdf['TOTAL'].sum())}")
 
-        # Bar chart in report
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), 
-                    palette="Blues_d", ax=ax)
-        ax.set_title(f"{grade} Subject Performance")
+        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
+        ax.set_title(f"{grade} - Subject Performance")
         doc.add_picture(save_fig_to_bytes(fig), width=Inches(6.5))
 
     buffer = BytesIO()
@@ -112,60 +107,64 @@ def generate_professional_report(grade_dfs, term):
     buffer.seek(0)
     return buffer
 
-# ====================== DOWNLOAD FULL REPORT ======================
 st.download_button(
-    "📄 Download Full Professional Word Report (with Charts)",
+    "📄 Download Full Professional Word Report",
     data=generate_professional_report(grade_dfs, term),
     file_name=f"{term}_Full_School_Report.docx",
     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     use_container_width=True
 )
 
-# ====================== DASHBOARD ======================
+# ====================== BEAUTIFUL DASHBOARD ======================
 for grade, gdf in grade_dfs.items():
     if gdf.empty: continue
 
     st.markdown(f'<p class="section-header">{grade}</p>', unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Subjects", len(gdf))
-    c2.metric("Average Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
-    c3.metric("Learners", int(gdf["TOTAL"].sum()))
+    # Metrics
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Number of Subjects", len(gdf))
+    col2.metric("Average Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
+    col3.metric("Total Learners", int(gdf["TOTAL"].sum()))
 
-    # Main Chart
-    st.subheader("Subject Performance")
+    st.markdown("### Subject Performance")
     if chart_type == "Bar":
-        fig, ax = plt.subplots(figsize=(10,6))
-        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
+        fig, ax = plt.subplots(figsize=(11, 7))
+        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), 
+                    palette="Blues_d", ax=ax)
+        ax.set_xlabel("Average Mark (%)", fontsize=12)
+        ax.set_ylabel("")
+        plt.tight_layout()
         st.pyplot(fig)
     elif chart_type == "Pie":
-        fig, ax = plt.subplots(figsize=(8,8))
-        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', startangle=90)
+        fig, ax = plt.subplots(figsize=(9, 9))
+        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10})
         ax.axis('equal')
         st.pyplot(fig)
-    else:
+    else:  # Stacked Bar
         level_cols = [c for c in gdf.columns if "LEVEL" in c]
-        fig, ax = plt.subplots(figsize=(10,6))
+        fig, ax = plt.subplots(figsize=(11, 7))
         gdf.set_index("SUBJECT")[level_cols].plot(kind="barh", stacked=True, ax=ax, colormap="Blues")
+        plt.tight_layout()
         st.pyplot(fig)
 
-    # SAFE Level Distribution (This was causing the error)
-    st.subheader("Level Distribution per Subject")
+    st.dataframe(gdf.round(1), use_container_width=True, height=400)
+
+    # Level Distribution - Clean & Beautiful
+    st.markdown("### Level Distribution per Subject")
     level_cols = [f"LEVEL {i}" for i in range(1, 8) if f"LEVEL {i}" in gdf.columns]
     cols = st.columns(3)
 
     for i, (_, row) in enumerate(gdf.iterrows()):
         with cols[i % 3]:
-            # Safe extraction
             levels = np.array([float(row.get(col, 0)) for col in level_cols])
-            levels = np.nan_to_num(levels, nan=0.0)  # Force clean values
+            levels = np.nan_to_num(levels, nan=0.0)
             
             if levels.sum() <= 0:
                 st.write(f"**{row['SUBJECT']}**: No data")
                 continue
 
-            # Remove zeros
-            positive_mask = levels > 0
+            positive_mask = levels > 0.01
             valid_levels = levels[positive_mask]
             valid_labels = [level_cols[j] for j in range(len(levels)) if positive_mask[j]]
 
@@ -173,27 +172,25 @@ for grade, gdf in grade_dfs.items():
                 st.write(f"**{row['SUBJECT']}**: No data")
                 continue
 
-            fig, ax = plt.subplots(figsize=(5, 5))
-            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90,
-                   colors=sns.color_palette("Blues", len(valid_levels)))
-            ax.set_title(row["SUBJECT"])
+            fig, ax = plt.subplots(figsize=(6, 6))
+            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90, 
+                   colors=sns.color_palette("Blues", len(valid_levels)), textprops={'fontsize': 9})
+            ax.set_title(row["SUBJECT"], fontsize=12, pad=15)
             ax.axis('equal')
             st.pyplot(fig)
             plt.close(fig)
 
     # Insights
-    st.subheader("🔍 Insights & Recommendations")
+    st.markdown("### 🔍 Insights & Recommendations")
     for _, row in gdf.iterrows():
         total = row["TOTAL"]
         if total <= 0: continue
         fail_rate = (row.get("LEVEL 1", 0) / total) * 100
-        avg_mark = row["AVERAGE MARK"]
-        
         if fail_rate > 30:
-            st.error(f"**{row['SUBJECT']}**: High failure rate ({fail_rate:.1f}%) — Recommend urgent intervention")
-        elif avg_mark < 50:
-            st.warning(f"**{row['SUBJECT']}**: Low average ({avg_mark:.1f}%)")
+            st.error(f"**{row['SUBJECT']}**: High failure rate ({fail_rate:.1f}%) — Immediate intervention recommended")
+        elif row["AVERAGE MARK"] < 52:
+            st.warning(f"**{row['SUBJECT']}**: Below target average ({row['AVERAGE MARK']:.1f}%)")
         else:
             st.success(f"**{row['SUBJECT']}**: Strong performance")
 
-st.caption("Saul Damon High School • Professional Term Analysis Dashboard")
+st.caption("Saul Damon High School • Professional Academic Performance Dashboard")
