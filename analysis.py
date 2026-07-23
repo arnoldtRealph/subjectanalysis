@@ -17,7 +17,6 @@ st.markdown("""
     .main-title {font-size:48px; text-align:center; font-weight:bold; color:#1E3A8A; margin-bottom:10px;}
     .sub-title {font-size:26px; text-align:center; margin-bottom:40px; color:#334155;}
     .section-header {font-size:28px; font-weight:700; color:#1E40AF; margin:35px 0 15px 0;}
-    .block-container {padding-top: 2rem;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -82,25 +81,50 @@ def save_fig_to_bytes(fig):
     img.seek(0)
     return img
 
-# ====================== WORD REPORT ======================
+# ====================== PROFESSIONAL WORD REPORT (with Pie Charts) ======================
 def generate_professional_report(grade_dfs, term):
     doc = Document()
     doc.add_heading(f"Saul Damon High School\n{term} Performance Report", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     doc.add_heading("Executive Summary", level=1)
-    total = sum(int(gdf["TOTAL"].sum()) for gdf in grade_dfs.values() if not gdf.empty)
-    doc.add_paragraph(f"Total Learners: {total}")
+    for grade, gdf in grade_dfs.items():
+        if gdf.empty: continue
+        avg = gdf["AVERAGE MARK"].mean()
+        doc.add_paragraph(f"{grade} Average: {avg:.1f}%")
 
     for grade, gdf in grade_dfs.items():
         if gdf.empty: continue
         doc.add_page_break()
         doc.add_heading(grade, level=1)
-        doc.add_paragraph(f"Average Mark: {gdf['AVERAGE MARK'].mean():.1f}% | Learners: {int(gdf['TOTAL'].sum())}")
 
+        # Bar Chart
         fig, ax = plt.subplots(figsize=(10, 6))
-        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
-        ax.set_title(f"{grade} - Subject Performance")
+        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), 
+                    palette="Blues_d", ax=ax)
+        ax.set_title(f"{grade} - Subject Average Marks")
         doc.add_picture(save_fig_to_bytes(fig), width=Inches(6.5))
+
+        # Pie Chart per Subject (in report)
+        doc.add_heading("Level Distribution", level=2)
+        level_cols = [c for c in gdf.columns if "LEVEL" in c]
+        for _, row in gdf.iterrows():
+            levels = np.array([float(row.get(col, 0)) for col in level_cols])
+            levels = np.nan_to_num(levels, nan=0.0)
+            if levels.sum() <= 0: continue
+
+            positive_mask = levels > 0.01
+            valid_levels = levels[positive_mask]
+            valid_labels = [level_cols[j] for j in range(len(levels)) if positive_mask[j]]
+
+            if len(valid_levels) == 0: continue
+
+            fig, ax = plt.subplots(figsize=(7, 7))
+            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90,
+                   colors=sns.color_palette("Blues", len(valid_levels)))
+            ax.set_title(f"{row['SUBJECT']} - Level Distribution")
+            ax.axis('equal')
+            doc.add_picture(save_fig_to_bytes(fig), width=Inches(5.5))
+            plt.close(fig)
 
     buffer = BytesIO()
     doc.save(buffer)
@@ -108,7 +132,7 @@ def generate_professional_report(grade_dfs, term):
     return buffer
 
 st.download_button(
-    "📄 Download Full Professional Word Report",
+    "📄 Download Full Professional Word Report (with Bar + Pie Charts)",
     data=generate_professional_report(grade_dfs, term),
     file_name=f"{term}_Full_School_Report.docx",
     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -121,36 +145,26 @@ for grade, gdf in grade_dfs.items():
 
     st.markdown(f'<p class="section-header">{grade}</p>', unsafe_allow_html=True)
 
-    # Metrics
-    col1, col2, col3 = st.columns(3)
+    # Stats only (no total learners)
+    col1, col2 = st.columns(2)
     col1.metric("Number of Subjects", len(gdf))
     col2.metric("Average Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
-    col3.metric("Total Learners", int(gdf["TOTAL"].sum()))
 
-    st.markdown("### Subject Performance")
-    if chart_type == "Bar":
+    st.markdown("### Average Marks by Subject")
+    if chart_type == "Bar" or chart_type == "Stacked Bar":
         fig, ax = plt.subplots(figsize=(11, 7))
         sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), 
                     palette="Blues_d", ax=ax)
-        ax.set_xlabel("Average Mark (%)", fontsize=12)
-        ax.set_ylabel("")
+        ax.set_xlabel("Average Mark (%)")
         plt.tight_layout()
         st.pyplot(fig)
-    elif chart_type == "Pie":
+    else:
         fig, ax = plt.subplots(figsize=(9, 9))
-        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10})
+        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', startangle=90)
         ax.axis('equal')
         st.pyplot(fig)
-    else:  # Stacked Bar
-        level_cols = [c for c in gdf.columns if "LEVEL" in c]
-        fig, ax = plt.subplots(figsize=(11, 7))
-        gdf.set_index("SUBJECT")[level_cols].plot(kind="barh", stacked=True, ax=ax, colormap="Blues")
-        plt.tight_layout()
-        st.pyplot(fig)
 
-    st.dataframe(gdf.round(1), use_container_width=True, height=400)
-
-    # Level Distribution - Clean & Beautiful
+    # Per Subject Pie Charts
     st.markdown("### Level Distribution per Subject")
     level_cols = [f"LEVEL {i}" for i in range(1, 8) if f"LEVEL {i}" in gdf.columns]
     cols = st.columns(3)
@@ -173,9 +187,9 @@ for grade, gdf in grade_dfs.items():
                 continue
 
             fig, ax = plt.subplots(figsize=(6, 6))
-            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90, 
-                   colors=sns.color_palette("Blues", len(valid_levels)), textprops={'fontsize': 9})
-            ax.set_title(row["SUBJECT"], fontsize=12, pad=15)
+            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90,
+                   colors=sns.color_palette("Blues", len(valid_levels)))
+            ax.set_title(row["SUBJECT"], fontsize=12)
             ax.axis('equal')
             st.pyplot(fig)
             plt.close(fig)
@@ -193,4 +207,4 @@ for grade, gdf in grade_dfs.items():
         else:
             st.success(f"**{row['SUBJECT']}**: Strong performance")
 
-st.caption("Saul Damon High School • Professional Academic Performance Dashboard")
+st.caption("Saul Damon High School • Professional Term Analysis")
