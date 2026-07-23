@@ -67,7 +67,7 @@ def process_data(file):
                 gdf[col] = pd.to_numeric(gdf[col], errors="coerce").fillna(0)
 
         level_cols = [f"LEVEL {i}" for i in range(1, 8) if f"LEVEL {i}" in gdf.columns]
-        if "TOTAL" not in gdf.columns or gdf["TOTAL"].sum() == 0:
+        if gdf.get("TOTAL", pd.Series([0])).sum() == 0:
             gdf["TOTAL"] = gdf[level_cols].sum(axis=1)
 
         grade_dfs[grade] = gdf
@@ -83,13 +83,13 @@ def save_fig_to_bytes(fig):
     img.seek(0)
     return img
 
-# ====================== REPORT ======================
+# ====================== PROFESSIONAL WORD REPORT ======================
 def generate_professional_report(grade_dfs, term):
     doc = Document()
     doc.add_heading(f"Saul Damon High School\n{term} Performance Report", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
+
     doc.add_heading("Executive Summary", level=1)
-    total_learners = sum(int(g["TOTAL"].sum()) for g in grade_dfs.values() if not g.empty)
+    total_learners = sum(int(gdf["TOTAL"].sum()) for gdf in grade_dfs.values() if not gdf.empty)
     doc.add_paragraph(f"Total Learners: {total_learners}")
 
     for grade, gdf in grade_dfs.items():
@@ -97,24 +97,28 @@ def generate_professional_report(grade_dfs, term):
         doc.add_page_break()
         doc.add_heading(grade, level=1)
         
-        fig, ax = plt.subplots(figsize=(10,6))
-        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
+        avg = gdf["AVERAGE MARK"].mean()
+        doc.add_paragraph(f"Average Mark: {avg:.1f}% | Total Learners: {int(gdf['TOTAL'].sum())}")
+
+        # Bar chart in report
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), 
+                    palette="Blues_d", ax=ax)
         ax.set_title(f"{grade} Subject Performance")
         doc.add_picture(save_fig_to_bytes(fig), width=Inches(6.5))
-        
-        doc.add_paragraph(f"Average: {gdf['AVERAGE MARK'].mean():.1f}% | Learners: {int(gdf['TOTAL'].sum())}")
 
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
     return buffer
 
-# ====================== DOWNLOAD ======================
+# ====================== DOWNLOAD FULL REPORT ======================
 st.download_button(
-    "📄 Download Full Professional Word Report",
+    "📄 Download Full Professional Word Report (with Charts)",
     data=generate_professional_report(grade_dfs, term),
-    file_name=f"{term}_Saul_Damon_Full_Report.docx",
-    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    file_name=f"{term}_Full_School_Report.docx",
+    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    use_container_width=True
 )
 
 # ====================== DASHBOARD ======================
@@ -125,68 +129,71 @@ for grade, gdf in grade_dfs.items():
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Subjects", len(gdf))
-    c2.metric("Avg Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
+    c2.metric("Average Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
     c3.metric("Learners", int(gdf["TOTAL"].sum()))
 
     # Main Chart
-    st.subheader("Subject Average Marks")
+    st.subheader("Subject Performance")
     if chart_type == "Bar":
         fig, ax = plt.subplots(figsize=(10,6))
         sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
         st.pyplot(fig)
     elif chart_type == "Pie":
         fig, ax = plt.subplots(figsize=(8,8))
-        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%')
+        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', startangle=90)
         ax.axis('equal')
         st.pyplot(fig)
     else:
-        level_cols = [c for c in gdf.columns if c.startswith("LEVEL")]
+        level_cols = [c for c in gdf.columns if "LEVEL" in c]
         fig, ax = plt.subplots(figsize=(10,6))
         gdf.set_index("SUBJECT")[level_cols].plot(kind="barh", stacked=True, ax=ax, colormap="Blues")
         st.pyplot(fig)
 
-    # FIXED Level Distribution - No more errors
+    # SAFE Level Distribution (This was causing the error)
     st.subheader("Level Distribution per Subject")
     level_cols = [f"LEVEL {i}" for i in range(1, 8) if f"LEVEL {i}" in gdf.columns]
-    col_layout = st.columns(3)
+    cols = st.columns(3)
 
     for i, (_, row) in enumerate(gdf.iterrows()):
-        with col_layout[i % 3]:
+        with cols[i % 3]:
+            # Safe extraction
             levels = np.array([float(row.get(col, 0)) for col in level_cols])
-            levels = np.nan_to_num(levels, nan=0.0, posinf=0.0, neginf=0.0)
+            levels = np.nan_to_num(levels, nan=0.0)  # Force clean values
             
-            total = levels.sum()
-            if total <= 0:
+            if levels.sum() <= 0:
                 st.write(f"**{row['SUBJECT']}**: No data")
                 continue
 
-            # Only keep positive values
-            mask = levels > 0.01
-            valid_levels = levels[mask]
-            valid_labels = [level_cols[j] for j in range(len(levels)) if mask[j]]
+            # Remove zeros
+            positive_mask = levels > 0
+            valid_levels = levels[positive_mask]
+            valid_labels = [level_cols[j] for j in range(len(levels)) if positive_mask[j]]
 
             if len(valid_levels) == 0:
                 st.write(f"**{row['SUBJECT']}**: No data")
                 continue
 
-            fig, ax = plt.subplots(figsize=(5,5))
+            fig, ax = plt.subplots(figsize=(5, 5))
             ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90,
                    colors=sns.color_palette("Blues", len(valid_levels)))
             ax.set_title(row["SUBJECT"])
             ax.axis('equal')
             st.pyplot(fig)
-            plt.close()
+            plt.close(fig)
 
     # Insights
-    st.subheader("Insights & Recommendations")
+    st.subheader("🔍 Insights & Recommendations")
     for _, row in gdf.iterrows():
-        if row["TOTAL"] <= 0: continue
-        fail_rate = (row.get("LEVEL 1", 0) / row["TOTAL"]) * 100
+        total = row["TOTAL"]
+        if total <= 0: continue
+        fail_rate = (row.get("LEVEL 1", 0) / total) * 100
+        avg_mark = row["AVERAGE MARK"]
+        
         if fail_rate > 30:
-            st.error(f"**{row['SUBJECT']}**: High fail rate ({fail_rate:.1f}%) — Action required")
-        elif row["AVERAGE MARK"] < 50:
-            st.warning(f"**{row['SUBJECT']}**: Low average ({row['AVERAGE MARK']:.1f}%)")
+            st.error(f"**{row['SUBJECT']}**: High failure rate ({fail_rate:.1f}%) — Recommend urgent intervention")
+        elif avg_mark < 50:
+            st.warning(f"**{row['SUBJECT']}**: Low average ({avg_mark:.1f}%)")
         else:
-            st.success(f"**{row['SUBJECT']}**: Good performance")
+            st.success(f"**{row['SUBJECT']}**: Strong performance")
 
-st.caption("Saul Damon High School • Professional Term Analysis")
+st.caption("Saul Damon High School • Professional Term Analysis Dashboard")
