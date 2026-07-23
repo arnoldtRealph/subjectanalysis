@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
 from docx import Document
 from docx.shared import Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -61,13 +62,12 @@ def process_data(file):
         gdf["SUBJECT"] = gdf["SUBJECT"].astype(str).str.strip()
         gdf = gdf[gdf["SUBJECT"].str.len() > 2]
 
-        # Numeric conversion
         for col in gdf.columns:
             if col != "SUBJECT":
                 gdf[col] = pd.to_numeric(gdf[col], errors="coerce").fillna(0)
 
         level_cols = [f"LEVEL {i}" for i in range(1, 8) if f"LEVEL {i}" in gdf.columns]
-        if gdf["TOTAL"].sum() == 0:
+        if "TOTAL" not in gdf.columns or gdf["TOTAL"].sum() == 0:
             gdf["TOTAL"] = gdf[level_cols].sum(axis=1)
 
         grade_dfs[grade] = gdf
@@ -75,7 +75,7 @@ def process_data(file):
 
 grade_dfs = process_data(uploaded_file)
 
-# ====================== CHART HELPERS ======================
+# ====================== HELPERS ======================
 def save_fig_to_bytes(fig):
     img = BytesIO()
     fig.savefig(img, format='png', dpi=200, bbox_inches='tight')
@@ -83,31 +83,26 @@ def save_fig_to_bytes(fig):
     img.seek(0)
     return img
 
-# ====================== PROFESSIONAL DOCX REPORT ======================
+# ====================== REPORT ======================
 def generate_professional_report(grade_dfs, term):
     doc = Document()
-    doc.add_heading(f"Saul Damon High School - {term} Performance Report", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-    # Summary
+    doc.add_heading(f"Saul Damon High School\n{term} Performance Report", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
     doc.add_heading("Executive Summary", level=1)
-    total_students = sum(int(gdf["TOTAL"].sum()) for gdf in grade_dfs.values() if not gdf.empty)
-    doc.add_paragraph(f"Total Learners: {total_students}")
+    total_learners = sum(int(g["TOTAL"].sum()) for g in grade_dfs.values() if not g.empty)
+    doc.add_paragraph(f"Total Learners: {total_learners}")
 
     for grade, gdf in grade_dfs.items():
-        if gdf.empty:
-            continue
+        if gdf.empty: continue
         doc.add_page_break()
         doc.add_heading(grade, level=1)
         
-        avg = gdf["AVERAGE MARK"].mean()
-        doc.add_paragraph(f"Average Mark: {avg:.1f}%")
-        doc.add_paragraph(f"Total Learners: {int(gdf['TOTAL'].sum())}")
-
-        # Bar Chart
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(10,6))
         sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
-        ax.set_title(f"{grade} - Subject Performance")
+        ax.set_title(f"{grade} Subject Performance")
         doc.add_picture(save_fig_to_bytes(fig), width=Inches(6.5))
+        
+        doc.add_paragraph(f"Average: {gdf['AVERAGE MARK'].mean():.1f}% | Learners: {int(gdf['TOTAL'].sum())}")
 
     buffer = BytesIO()
     doc.save(buffer)
@@ -115,82 +110,83 @@ def generate_professional_report(grade_dfs, term):
     return buffer
 
 # ====================== DOWNLOAD ======================
-full_report = generate_professional_report(grade_dfs, term)
-st.download_button("📄 Download Full Professional Report (DOCX)", 
-                   data=full_report, 
-                   file_name=f"{term}_Full_School_Report.docx",
-                   mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+st.download_button(
+    "📄 Download Full Professional Word Report",
+    data=generate_professional_report(grade_dfs, term),
+    file_name=f"{term}_Saul_Damon_Full_Report.docx",
+    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
 
 # ====================== DASHBOARD ======================
 for grade, gdf in grade_dfs.items():
-    if gdf.empty:
-        continue
+    if gdf.empty: continue
 
     st.markdown(f'<p class="section-header">{grade}</p>', unsafe_allow_html=True)
 
-    # Metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("Subjects", len(gdf))
-    c2.metric("Average Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
+    c2.metric("Avg Mark", f"{gdf['AVERAGE MARK'].mean():.1f}%")
     c3.metric("Learners", int(gdf["TOTAL"].sum()))
 
     # Main Chart
-    st.subheader("Average Marks by Subject")
+    st.subheader("Subject Average Marks")
     if chart_type == "Bar":
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(10,6))
         sns.barplot(x="AVERAGE MARK", y="SUBJECT", data=gdf.sort_values("AVERAGE MARK", ascending=False), palette="Blues_d", ax=ax)
         st.pyplot(fig)
     elif chart_type == "Pie":
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%', startangle=90)
+        fig, ax = plt.subplots(figsize=(8,8))
+        ax.pie(gdf["AVERAGE MARK"], labels=gdf["SUBJECT"], autopct='%1.1f%%')
         ax.axis('equal')
         st.pyplot(fig)
-    else:  # Stacked
-        level_cols = [c for c in gdf.columns if "LEVEL" in c]
-        fig, ax = plt.subplots(figsize=(10, 6))
+    else:
+        level_cols = [c for c in gdf.columns if c.startswith("LEVEL")]
+        fig, ax = plt.subplots(figsize=(10,6))
         gdf.set_index("SUBJECT")[level_cols].plot(kind="barh", stacked=True, ax=ax, colormap="Blues")
         st.pyplot(fig)
 
-    # FIXED Level Distribution
+    # FIXED Level Distribution - No more errors
     st.subheader("Level Distribution per Subject")
     level_cols = [f"LEVEL {i}" for i in range(1, 8) if f"LEVEL {i}" in gdf.columns]
-    cols_layout = st.columns(3)
+    col_layout = st.columns(3)
 
-    for idx, (_, row) in enumerate(gdf.iterrows()):
-        with cols_layout[idx % 3]:
-            levels = pd.to_numeric(row[level_cols], errors='coerce').fillna(0)
-            total = levels.sum()
+    for i, (_, row) in enumerate(gdf.iterrows()):
+        with col_layout[i % 3]:
+            levels = np.array([float(row.get(col, 0)) for col in level_cols])
+            levels = np.nan_to_num(levels, nan=0.0, posinf=0.0, neginf=0.0)
             
+            total = levels.sum()
             if total <= 0:
                 st.write(f"**{row['SUBJECT']}**: No data")
                 continue
 
-            # Critical fix: Remove zero values
-            mask = levels > 0
+            # Only keep positive values
+            mask = levels > 0.01
             valid_levels = levels[mask]
-            valid_labels = [label for label, m in zip(level_cols, mask) if m]
+            valid_labels = [level_cols[j] for j in range(len(levels)) if mask[j]]
 
             if len(valid_levels) == 0:
                 st.write(f"**{row['SUBJECT']}**: No data")
                 continue
 
-            fig, ax = plt.subplots(figsize=(5, 5))
-            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90, 
+            fig, ax = plt.subplots(figsize=(5,5))
+            ax.pie(valid_levels, labels=valid_labels, autopct='%1.1f%%', startangle=90,
                    colors=sns.color_palette("Blues", len(valid_levels)))
             ax.set_title(row["SUBJECT"])
             ax.axis('equal')
             st.pyplot(fig)
-            plt.close(fig)
+            plt.close()
 
     # Insights
     st.subheader("Insights & Recommendations")
     for _, row in gdf.iterrows():
-        fail_rate = (row.get("LEVEL 1", 0) / row["TOTAL"] * 100) if row["TOTAL"] > 0 else 0
+        if row["TOTAL"] <= 0: continue
+        fail_rate = (row.get("LEVEL 1", 0) / row["TOTAL"]) * 100
         if fail_rate > 30:
-            st.error(f"**{row['SUBJECT']}**: High failure rate ({fail_rate:.1f}%) — Immediate support needed")
+            st.error(f"**{row['SUBJECT']}**: High fail rate ({fail_rate:.1f}%) — Action required")
         elif row["AVERAGE MARK"] < 50:
             st.warning(f"**{row['SUBJECT']}**: Low average ({row['AVERAGE MARK']:.1f}%)")
         else:
             st.success(f"**{row['SUBJECT']}**: Good performance")
 
-st.caption("Saul Damon High School • Term Analysis Dashboard")
+st.caption("Saul Damon High School • Professional Term Analysis")
